@@ -1,9 +1,10 @@
-name: "Build and Release Nono"
+name: Build and Release Nono
 
 on:
+  workflow_dispatch: {}                 # <-- lets you click “Run workflow”
   push:
     tags:
-      - "v*.*.*"   # runs when you push a tag like v0.1.0
+      - "v*.*.*"                        # <-- runs when you push v0.1.0 etc.
 
 jobs:
   build:
@@ -13,14 +14,14 @@ jobs:
         os: [macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Install Node
-        uses: actions/setup-node@v3
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install Rust
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install frontend deps
@@ -33,8 +34,7 @@ jobs:
         run: npx tauri build
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: nono-${{ matrix.os }}
           path: src-tauri/target/release/bundle
-
