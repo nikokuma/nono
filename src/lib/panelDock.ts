@@ -9,7 +9,7 @@ import {
   type Layout
 } from './constants';
 
-export type PanelKind = 'chat' | 'calendar' | 'todo' | 'apps';
+export type PanelKind = 'chat' | 'calendar' | 'todo' | 'apps' | 'menu';
 
 export function panelSideForLayout(layout: Layout): 'leftOfNono'|'rightOfNono' {
   // middle/right/bottom-right → panel on Nono's LEFT

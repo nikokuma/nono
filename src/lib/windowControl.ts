@@ -87,3 +87,4 @@ export async function resizeByLayout(
   // In your code you decide left/right from layout; keep that logic where it is
   return resizeWindowCentered(newW, newH);
 }
+

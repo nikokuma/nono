@@ -215,16 +215,58 @@
     }
 
     if (!menuOpen) {
-      const { size } = await getLogicalBounds();
-      preMenuSize = { width: size.width, height: size.height };
-      menuLayout = await getLayout();
-      console.log('[toggleMenu] open', { preMenuSize, menuLayout });
-      menuOpen = true;
-      await tick();
-    } else {
-      console.log('[toggleMenu] close');
-      menuOpen = false;
-    }
+  const { size } = await getLogicalBounds();
+  preMenuSize = { width: size.width, height: size.height };
+  menuLayout = await getLayout();
+
+  // decide the side exactly like panels
+  const s = get(nonoScale);
+  let side: Side = layoutToDockSide(menuLayout);
+  side = clampDockSideBySpace(side, 'menu', s, wrapperRef);
+  dockSide = side;
+
+  pinNono();
+  await tick();
+
+  const { width, height } = targetWindowSizeFor(menuLayout, s, 'menu');
+
+  // keep compensation when growing LEFT (same trick you use elsewhere)
+  const { size: cur } = await getLogicalBounds();
+  const dW = Math.round(width - cur.width);
+  if (dockSide === 'left' && dW !== 0) {
+    pinLeft = pinLeft + dW;
+    await tick();
+  }
+
+  await resizeWindowAnchoredToWrapper(dockSide, width, height, wrapperRef);
+
+  menuOpen = true;
+  await tick();
+}
+
+    else {
+  // close the menu and return to preMenuSize
+  pinNono();
+  await tick();
+
+  const { size: cur } = await getLogicalBounds();
+  const targetW = preMenuSize.width;
+  const targetH = preMenuSize.height;
+  const dW = Math.round(targetW - cur.width); // likely negative when shrinking
+
+  if (dockSide === 'left' && dW !== 0) {
+    pinLeft = pinLeft + dW; // undo the left offset we added
+    await tick();
+  }
+
+  await resizeWindowAnchoredToWrapper(dockSide, targetW, targetH, wrapperRef);
+
+  menuOpen = false;
+
+  unpinNono();
+  await tick();
+}
+
   }
 
   async function backToNono() {
@@ -321,7 +363,7 @@
       on:click={toggleMenu}
       data-tauri-drag-region
     >
-      <img src="/NonoNeutral.png" alt="Nono" class="nono" data-tauri-drag-region />
+      <img src={appsOpen ? "/NonoApp.png" : "/NonoNeutral.png"} alt="Nono" class="nono" data-tauri-drag-region />
 
       <img
         src="/NonoGreenClip.png"
@@ -348,7 +390,7 @@
              style="left:{panelFrame.left}px; top:{panelFrame.top}px; width:{panelFrame.w}px; height:{panelFrame.h}px;">
           <div class="panel-scaler"
                style="width:{getPanelBase('chat', menuLayout).w}px; height:{getPanelBase('chat', menuLayout).h}px; transform: scale({$nonoScale});">
-            <button on:click={backToNono}>← Back</button>
+            
             <Aichat />
           </div>
         </div>
@@ -361,7 +403,7 @@
              style="left:{panelFrame.left}px; top:{panelFrame.top}px; width:{panelFrame.w}px; height:{panelFrame.h}px;">
           <div class="panel-scaler"
                style="width:{getPanelBase('calendar', menuLayout).w}px; height:{getPanelBase('calendar', menuLayout).h}px; transform: scale({$nonoScale});">
-            <button on:click={backToNono}>← Back</button>
+            
             <Calendar />
           </div>
         </div>
@@ -374,7 +416,6 @@
              style="left:{panelFrame.left}px; top:{panelFrame.top}px; width:{panelFrame.w}px; height:{panelFrame.h}px;">
           <div class="panel-scaler"
                style="width:{getPanelBase('todo', menuLayout).w}px; height:{getPanelBase('todo', menuLayout).h}px; transform: scale({$nonoScale});">
-            <button on:click={backToNono}>← Back</button>
             <TodoPanel />
           </div>
         </div>
@@ -382,17 +423,21 @@
     {/if}
 
     {#if appsOpen}
-      {#key `${$nonoScale}-apps-${menuLayout}`}
-        <div class="panel"
-             style="left:{panelFrame.left}px; top:{panelFrame.top}px; width:{panelFrame.w}px; height:{panelFrame.h}px;">
-          <div class="panel-scaler"
-               style="width:{getPanelBase('apps', menuLayout).w}px; height:{getPanelBase('apps', menuLayout).h}px; transform: scale({$nonoScale});">
-            <button on:click={backToNono}>← Back</button>
-            <ApplicationsSection />
-          </div>
-        </div>
-      {/key}
-    {/if}
+  {#key `${$nonoScale}-apps-${menuLayout}`}
+    <div 
+  class="panel {appsOpen ? 'apps-panel' : ''}" 
+  style="left:{panelFrame.left}px; top:{panelFrame.top}px; width:{panelFrame.w}px; height:{panelFrame.h}px; overflow:{appsOpen ? 'visible' : 'hidden'}">
+  <div 
+    class="panel-scaler {appsOpen ? 'apps-layer' : ''}" 
+    style="width:{getPanelBase('apps', menuLayout).w}px; height:{getPanelBase('apps', menuLayout).h}px; transform: scale({$nonoScale}); overflow:{appsOpen ? 'visible' : 'hidden'}">
+    <ApplicationsSection dockSide={dockSide} />
+  </div>
+</div>
+
+  {/key}
+{/if}
+
+
   </div>
 
   <NonoBubble />
@@ -485,8 +530,8 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 60%;
-    height: 45%;
+    width: 80%;
+    height: 55%;
     background-image: url('/NonoMessageBubble.png');
     background-size: contain;
     background-repeat: no-repeat;
@@ -532,15 +577,15 @@
   .bubble-container.layout-middle .bubble:nth-child(3) { transform: translate(20%, -150%); }
   .bubble-container.layout-middle .bubble:nth-child(4) { transform: translate(50%, -110%); }
 
-  .bubble-container.layout-left .bubble:nth-child(1) { transform: translate(-30%, -30%); }
-  .bubble-container.layout-left .bubble:nth-child(2) { transform: translate(3%, -45%); }
-  .bubble-container.layout-left .bubble:nth-child(3) { transform: translate(-18%, -6%); }
-  .bubble-container.layout-left .bubble:nth-child(4) { transform: translate(30%, 3%); }
+  .bubble-container.layout-left .bubble:nth-child(1) { transform: translate(50%, 20%); }
+  .bubble-container.layout-left .bubble:nth-child(2) { transform: translate(50%, -30%); }
+  .bubble-container.layout-left .bubble:nth-child(3) { transform: translate(50%, -80%); }
+  .bubble-container.layout-left .bubble:nth-child(4) { transform: translate(50%, -120%); }
 
-  .bubble-container.layout-right .bubble:nth-child(1) { transform: translate(-160%, 0%); }
-  .bubble-container.layout-right .bubble:nth-child(2) { transform: translate(-160%, -50%); }
-  .bubble-container.layout-right .bubble:nth-child(3) { transform: translate(-160%, -100%); }
-  .bubble-container.layout-right .bubble:nth-child(4) { transform: translate(-160%, -150%); }
+  .bubble-container.layout-right .bubble:nth-child(1) { transform: translate(-150%, 20%); }
+  .bubble-container.layout-right .bubble:nth-child(2) { transform: translate(-150%, -30%); }
+  .bubble-container.layout-right .bubble:nth-child(3) { transform: translate(-150%, -80%); }
+  .bubble-container.layout-right .bubble:nth-child(4) { transform: translate(-150%, -120%); }
 
   .bubble-container.layout-bottom-left .bubble:nth-child(1) { transform: translate(-30%, 30%); }
   .bubble-container.layout-bottom-left .bubble:nth-child(2) { transform: translate(-45%, 3%); }

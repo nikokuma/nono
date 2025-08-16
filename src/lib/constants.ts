@@ -18,10 +18,11 @@ export const DOCK_GAP  = 24;
 
 // --- Per-UI base sizes (unscaled). Tweak these; scale multiplies them. ---
 export const PANEL_BASE = {
-  chat:     { w: 900,  h: 680 },
-  calendar: { w: 1200, h: 900 },
-  todo:     { w: 900,  h: 720 },
-  apps:     { w: 1000, h: 720 },
+  chat:     { w: 400,  h: 500 },
+  calendar: { w: 600, h: 550 },
+  todo:     { w: 400,  h: 500 },
+  apps:     { w: 200, h: 350},
+  menu:     { w: 250, h: 350 },
 } as const;
 
 // --- OPTIONAL: per-layout overrides (only add keys you want to change) ---
